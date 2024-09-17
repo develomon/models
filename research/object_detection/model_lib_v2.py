@@ -23,6 +23,9 @@ import os
 import pprint
 import time
 
+import regex as re
+import glob
+
 import numpy as np
 import tensorflow.compat.v1 as tf
 
@@ -49,6 +52,11 @@ RESTORE_MAP_ERROR_TEMPLATE = (
     ' restore_map was expected to return a (str -> Model) mapping,'
     ' but we received a ({} -> {}) mapping instead.'
 )
+
+def natural_sort(l):
+    convert = lambda text: int(text) if text.isdigit() else text.lower()
+    alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
+    return sorted(l, key=alphanum_key)
 
 
 def _compute_losses_and_predictions_dicts(
@@ -449,7 +457,7 @@ def train_loop(
     use_tpu=False,
     save_final_config=False,
     checkpoint_every_n=1000,
-    checkpoint_max_to_keep=7,
+    checkpoint_max_to_keep=20,
     record_summaries=True,
     performance_summary_exporter=None,
     num_steps_per_iteration=NUM_STEPS_PER_ITERATION,
@@ -1132,8 +1140,8 @@ def eval_continuously(
   optimizer, _ = optimizer_builder.build(
       configs['train_config'].optimizer, global_step=global_step)
 
-  for latest_checkpoint in tf.train.checkpoints_iterator(
-      checkpoint_dir, timeout=timeout, min_interval_secs=wait_interval):
+  for latest_checkpoint in natural_sort(list(set(map(lambda n: n[:n.index(".")], glob.glob(f"{checkpoint_dir}/ckpt-*.*"))))):
+
     ckpt = tf.compat.v2.train.Checkpoint(
         step=global_step, model=detection_model, optimizer=optimizer)
 
